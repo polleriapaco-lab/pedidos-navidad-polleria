@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Pedidos Navidad – La Pollería 2.0</string>
+    <string name="notification_channel">Recordatorios de pedidos</string>
+</resources>

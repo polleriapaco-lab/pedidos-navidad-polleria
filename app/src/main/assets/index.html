@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Pedidos Navidad – La Pollería 2.0</title>
+  <style>
+    :root{--foreground:#191919;--primary:#171717;--primary-foreground:#fff;--card:#fff;--card-foreground:#191919;--border:#dedede;--muted:#f2f2f2;--muted-foreground:#626262;--viz-series-1:#f36a10;--green:#16883f}
+    *{box-sizing:border-box}body{margin:0;padding:16px;background:#f6f2ec;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}.btn{border:1px solid var(--border);background:#fff;color:#191919;border-radius:12px;padding:11px 14px;font:inherit;cursor:pointer}.btn-primary{background:#f36a10;color:#fff;border-color:#f36a10}.btn-ghost{background:transparent}.viz-tile{background:#fff}.form-label{display:grid;gap:7px;font-weight:650}.form-control{width:100%;border:1px solid #cfcfcf;border-radius:11px;padding:12px;background:#fff;color:#191919;font:inherit}.text-small{font-size:.84em}.viz-row{display:flex;gap:7px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+<div id="navidad-app">
+  <style>
+    #navidad-app { color:var(--foreground); max-width:1200px; margin:auto; }
+    #navidad-app .appbar { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; padding:18px 20px; margin-bottom:16px; border-radius:20px; background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 72%,var(--viz-series-1))); color:var(--primary-foreground); box-shadow:0 10px 28px color-mix(in srgb,var(--primary) 24%,transparent); }
+    #navidad-app .nav-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    #navidad-app .brand { display:flex; align-items:center; gap:12px; font-weight:700; font-size:18px; }
+    #navidad-app .mark { width:54px; height:54px; display:grid; place-items:center; border-radius:16px; background:var(--primary-foreground); color:var(--primary); font-size:30px; box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--primary) 12%,transparent); }
+    #navidad-app .steps { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:16px; }
+    #navidad-app .step { padding:10px 4px; text-align:center; border-radius:12px; background:var(--muted); color:var(--muted-foreground); }
+    #navidad-app .step.active { background:color-mix(in srgb,var(--viz-series-1) 16%,var(--card)); color:var(--foreground); font-weight:700; box-shadow:inset 0 -3px 0 var(--viz-series-1); }
+    #navidad-app .panel { padding:22px; border:1px solid var(--border); border-radius:20px; background:var(--card); color:var(--card-foreground); box-shadow:0 8px 24px color-mix(in srgb,var(--foreground) 8%,transparent); }
+    #navidad-app .panel h3 { margin-top:0; font-size:24px; }
+    #navidad-app .fields { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    #navidad-app .product-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+    #navidad-app .product { min-height:112px; display:flex; flex-direction:column; justify-content:center; gap:8px; text-align:center; border-radius:16px; font-weight:650; transition:transform .15s ease,box-shadow .15s ease; }
+    #navidad-app .product:hover { transform:translateY(-2px); box-shadow:0 8px 18px color-mix(in srgb,var(--foreground) 10%,transparent); }
+    #navidad-app .product[aria-pressed="true"],#navidad-app .choice[aria-pressed="true"],#navidad-app .date[aria-pressed="true"] { outline:3px solid var(--viz-series-1); background:color-mix(in srgb,var(--viz-series-1) 16%,var(--card)); }
+    #navidad-app .emoji { font-size:38px; }
+    #navidad-app .quantity { display:flex; align-items:center; justify-content:center; gap:14px; margin:14px 0; }
+    #navidad-app .quantity-value { min-width:100px; text-align:center; font-weight:500; }
+    #navidad-app .choice-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    #navidad-app .choice { min-height:76px; border-radius:15px; font-size:16px; font-weight:650; }
+    #navidad-app .calendar { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+    #navidad-app .date { min-height:66px; display:flex; flex-direction:column; justify-content:center; }
+    #navidad-app .actions { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:16px; }
+    #navidad-app .cart { display:grid; gap:8px; margin-top:12px; }
+    #navidad-app .cart-row { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
+    #navidad-app .summary { display:grid; gap:12px; }
+    #navidad-app .summary-row { display:grid; grid-template-columns:150px 1fr; gap:12px; padding-bottom:9px; border-bottom:1px solid var(--border); }
+    #navidad-app .muted { color:var(--muted-foreground); }
+    #navidad-app .whatsapp { padding:18px; border-radius:16px; background:color-mix(in srgb,var(--green) 12%,var(--card)); border:2px solid color-mix(in srgb,var(--green) 45%,var(--border)); white-space:pre-line; line-height:1.55; }
+    #navidad-app .whatsapp::before { content:'💬 Vista previa de WhatsApp'; display:block; margin-bottom:10px; font-weight:750; color:var(--green); }
+    #navidad-app .btn-primary { min-height:48px; font-weight:700; }
+    #navidad-app .order-group { margin-top:14px; }
+    #navidad-app .order-row { display:grid; grid-template-columns:90px 1fr 220px; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); }
+    #navidad-app .order-actions { display:grid; gap:6px; }
+    #navidad-app .count-row { display:grid; grid-template-columns:1fr 100px 1fr; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+    #navidad-app [hidden] { display:none !important; }
+    @media(max-width:650px){ #navidad-app .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));} #navidad-app .choice-grid{grid-template-columns:1fr;} #navidad-app .fields{grid-template-columns:1fr;} #navidad-app .calendar{grid-template-columns:repeat(2,minmax(0,1fr));} #navidad-app .step span{display:none;} }
+  </style>
+
+  <div class="appbar">
+    <div class="brand"><div class="mark">🐔</div><div>LA POLLERÍA 2.0<br><span class="text-small">Pedidos de Navidad</span></div></div>
+    <div class="nav-actions"><button type="button" class="btn" id="nav-new">➕ Pedido</button><button type="button" class="btn" id="nav-orders">📅 Por día</button><button type="button" class="btn" id="nav-all-orders">📋 Todos</button><button type="button" class="btn" id="nav-count">🧮 Recuento</button><button type="button" class="btn" id="nav-tomorrow">🔔 Mañana</button><button type="button" class="btn" id="nav-backup">💾 Copia</button><button type="button" class="btn" id="nav-restore">↩ Restaurar</button><input type="file" id="restore-file" accept="application/json" hidden></div>
+  </div>
+
+  <div class="steps" aria-label="Progreso del pedido">
+    <div class="step active" data-step="1">👤 <span>Cliente</span></div>
+    <div class="step" data-step="2">🍗 <span>Producto</span></div>
+    <div class="step" data-step="3">🔪 <span>Preparación</span></div>
+    <div class="step" data-step="4">📅 <span>Recogida</span></div>
+    <div class="step" data-step="5">✅ <span>Confirmar</span></div>
+  </div>
+
+  <section class="panel" id="screen-1">
+    <h3>Datos del cliente</h3>
+    <div class="fields">
+      <label class="form-label">Nombre completo<input class="form-control" id="customer-name" placeholder="Ej. María García"></label>
+      <label class="form-label">Teléfono / WhatsApp<input class="form-control" id="customer-phone" inputmode="tel" placeholder="Ej. 612 345 678"></label>
+      <label class="form-label">Señal<select class="form-control" id="deposit-status"><option value="Pendiente">Pendiente</option><option value="Entregada">Entregada</option></select></label>
+      <label class="form-label">Importe de la señal (opcional)<input class="form-control" id="deposit-amount" inputmode="decimal" placeholder="Ej. 20 €"></label>
+    </div>
+    <div class="actions"><span></span><button type="button" class="btn btn-primary" data-next="2">Elegir productos →</button></div>
+  </section>
+
+  <section class="panel" id="screen-2" hidden>
+    <h3>Elige un producto</h3>
+    <div class="product-grid" id="product-grid"></div>
+    <label class="form-label" id="other-product-wrap" hidden>Escribe el producto<input class="form-control" id="other-product" placeholder="Nombre del producto"></label>
+    <div class="cart" id="cart-preview"></div>
+    <div class="actions"><button type="button" class="btn" data-back="1">← Atrás</button><button type="button" class="btn btn-primary" id="to-preparation">Cantidad y preparación →</button></div>
+  </section>
+
+  <section class="panel" id="screen-3" hidden>
+    <h3 id="selected-title">Preparación</h3>
+    <div class="quantity">
+      <button type="button" class="btn" id="minus">−</button><div class="quantity-value" id="quantity-label">1 unidad</div><button type="button" class="btn" id="plus">+</button>
+    </div>
+    <label class="form-label">Cantidad personalizada (opcional)<input class="form-control" id="custom-quantity" placeholder="Ej. 5 kg o una pieza de 4 kg"></label>
+    <div class="choice-grid" id="prep-grid"></div>
+    <div id="truffle-options" hidden>
+      <label class="form-label">Preparación para trufar<select class="form-control" id="truffle-select"><option>Todo picado</option><option>Muslos picados y pechuga entera</option><option>Muslos picados y pechuga en tiras</option></select></label>
+    </div>
+    <label class="form-label" id="other-prep-wrap" hidden>Escribe cómo lo quiere<textarea class="form-control" id="other-prep" rows="2" placeholder="Instrucciones de preparación"></textarea></label>
+    <div class="actions"><button type="button" class="btn" data-back="2">← Atrás</button><button type="button" class="btn btn-primary" id="add-line">Guardar producto y elegir recogida →</button></div>
+  </section>
+
+  <section class="panel" id="screen-4" hidden>
+    <h3>Elige el día de recogida</h3>
+    <label class="form-label">Cualquier fecha disponible<input type="date" class="form-control" id="pickup-date"></label>
+    <p class="muted text-small">Fechas rápidas</p>
+    <div class="calendar" id="date-grid"></div>
+    <div class="actions"><button type="button" class="btn" data-back="2">+ Añadir otro producto</button><button type="button" class="btn btn-primary" id="to-summary">Revisar pedido →</button></div>
+  </section>
+
+  <section class="panel" id="screen-5" hidden>
+    <h3>Resumen del pedido</h3>
+    <div class="summary" id="summary"></div>
+    <div class="whatsapp" id="whatsapp-preview"></div>
+    <div class="actions"><button type="button" class="btn" data-back="4">← Modificar</button><button type="button" class="btn btn-primary" id="confirm">Confirmar y abrir WhatsApp</button></div>
+  </section>
+
+  <section class="panel" id="done" hidden>
+    <h3>✓ Pedido guardado</h3>
+    <p id="done-text"></p>
+    <div class="actions"><button type="button" class="btn btn-primary" id="new-order">Crear otro pedido</button></div>
+  </section>
+
+  <section class="panel" id="orders-screen" hidden>
+    <h3 id="orders-heading">Pedidos por día</h3>
+    <label class="form-label" id="orders-filter-label">Elige el día de recogida<input type="date" class="form-control" id="orders-date"></label>
+    <div id="orders-list"></div>
+    <div class="actions"><button type="button" class="btn" id="print-day">Imprimir listado</button></div>
+  </section>
+
+  <section class="panel" id="count-screen" hidden>
+    <h3>Recuento para realizar el encargo</h3>
+    <div class="fields"><label class="form-label">Desde<input type="date" class="form-control" id="count-from"></label><label class="form-label">Hasta<input type="date" class="form-control" id="count-to"></label></div>
+    <label class="form-label">Límite máximo de pedidos por día<input type="number" class="form-control" id="daily-limit" min="1" value="25"></label>
+    <div id="count-list"></div>
+    <div class="actions"><button type="button" class="btn" id="print-count">Imprimir recuento</button></div>
+  </section>
+
+  <script>
+    (() => {
+      const root=document.getElementById('navidad-app');
+      const products=[['Pollo normal','🐔'],['Pollo de corral','🐓'],['Pollo campero','🐔'],['Pollo payés','🐓'],['Pollo relleno','🍗'],['Capón','🐔'],['Pularda','🐔'],['Pularda rellena','🍗'],['Pava de bellota','🦃'],['Pavo de bellota','🦃'],['Pavo de granja','🦃'],['Pava de granja','🦃'],['Pavitas','🦃'],['Picantones','🐤'],['Pato','🦆'],['Oca','🪿'],['Pintada','🐦'],['Pacorritos','🐥'],['Gallina de corral','🐓'],['Otros','✏️']];
+      const preps=[['Entero','🐔'],['Trozos','🔪'],['Deshuesado','🍖'],['Para trufar','✨'],['Otros','✍️']];
+      const shop='LA POLLERÍA 2.0\nMercado de Chamartín · Puestos 61-62 · Planta alta\n28016 Madrid\nTeléfono: 91 457 15 89';
+      let step=1,selectedProduct='',selectedPrep='',quantity=1,cart=[],pickup='',currentNumber='',currentWhatsAppMessage='';
+      const iso=d=>d.toISOString().slice(0,10);
+      const future=n=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d);};
+      let orders=JSON.parse(localStorage.getItem('polleria_orders')||'[]');
+      const saveOrders=()=>localStorage.setItem('polleria_orders',JSON.stringify(orders));
+      const grid=root.querySelector('#product-grid'),prepGrid=root.querySelector('#prep-grid');
+      function go(n){step=n;root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('#screen-'+n).hidden=false;root.querySelector('.steps').hidden=false;root.querySelectorAll('.step').forEach(x=>x.classList.toggle('active',Number(x.dataset.step)<=n));}
+      function showPanel(id){root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('.steps').hidden=true;root.querySelector('#'+id).hidden=false;}
+      products.forEach(([name,icon])=>{const b=document.createElement('button');b.type='button';b.className='btn viz-tile product';b.innerHTML='<span class="emoji">'+icon+'</span><span>'+name+'</span>';b.addEventListener('click',()=>{selectedProduct=name;grid.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');root.querySelector('#other-product-wrap').hidden=name!=='Otros';if(name!=='Otros')openPreparation();});grid.appendChild(b);});
+      preps.forEach(([name,icon])=>{const b=document.createElement('button');b.type='button';b.className='btn viz-tile choice';b.innerHTML='<span class="emoji">'+icon+'</span><br>'+name;b.addEventListener('click',()=>{selectedPrep=name;prepGrid.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');root.querySelector('#truffle-options').hidden=name!=='Para trufar';root.querySelector('#other-prep-wrap').hidden=name!=='Otros';});prepGrid.appendChild(b);});
+      function actualProduct(){return selectedProduct==='Otros'?(root.querySelector('#other-product').value.trim()||'Otro producto'):selectedProduct;}
+      function qty(){return root.querySelector('#custom-quantity').value.trim()||(quantity+' '+(quantity===1?'unidad':'unidades'));}
+      function prep(){if(selectedPrep==='Para trufar')return 'Para trufar: '+root.querySelector('#truffle-select').value;if(selectedPrep==='Otros')return root.querySelector('#other-prep').value.trim()||'Preparación especial';return selectedPrep;}
+      function renderCart(){const c=root.querySelector('#cart-preview');c.innerHTML=cart.length?'<strong>Productos añadidos</strong>':'';cart.forEach((x,i)=>{const r=document.createElement('div');r.className='cart-row';r.innerHTML='<span>'+x.product+' · '+x.quantity+' · '+x.prep+'</span><button type="button" class="btn btn-ghost">Quitar</button>';r.querySelector('button').onclick=()=>{cart.splice(i,1);renderCart();};c.appendChild(r);});}
+      root.querySelectorAll('[data-next]').forEach(b=>b.onclick=()=>go(Number(b.dataset.next)));
+      root.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>go(Number(b.dataset.back)));
+      function openPreparation(){if(!selectedProduct)return;root.querySelector('#selected-title').textContent='¿Cómo quiere '+actualProduct()+'?';go(3);}
+      root.querySelector('#to-preparation').onclick=openPreparation;
+      root.querySelector('#minus').onclick=()=>{quantity=Math.max(1,quantity-1);root.querySelector('#quantity-label').textContent=quantity+' '+(quantity===1?'unidad':'unidades');};
+      root.querySelector('#plus').onclick=()=>{quantity++;root.querySelector('#quantity-label').textContent=quantity+' unidades';};
+      root.querySelector('#add-line').onclick=()=>{if(!selectedPrep)return;cart.push({product:actualProduct(),quantity:qty(),prep:prep()});renderCart();selectedProduct='';selectedPrep='';quantity=1;root.querySelector('#quantity-label').textContent='1 unidad';root.querySelector('#custom-quantity').value='';grid.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));prepGrid.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));go(4);};
+      const dateGrid=root.querySelector('#date-grid'),pickupInput=root.querySelector('#pickup-date');pickupInput.min=iso(new Date());const max=new Date();max.setMonth(max.getMonth()+6);pickupInput.max=iso(max);pickupInput.onchange=()=>{pickup=pickupInput.value;dateGrid.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));};
+      root.querySelector('#daily-limit').value=localStorage.getItem('polleria_daily_limit')||'25';
+      const limit=()=>Number(root.querySelector('#daily-limit').value)||25;
+      [7,14,21,30].forEach(i=>{const d=new Date();d.setDate(d.getDate()+i);const value=iso(d),used=orders.filter(o=>o.date===value&&o.status!=='Cancelado').length;const b=document.createElement('button');b.type='button';b.className='btn viz-tile date';b.innerHTML='<strong>'+new Intl.DateTimeFormat('es-ES',{day:'numeric',month:'short'}).format(d)+'</strong><span class="text-small">'+used+' de '+limit()+' pedidos</span>';b.onclick=()=>{pickup=value;pickupInput.value=pickup;dateGrid.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');};dateGrid.appendChild(b);});
+      const prettyDate=value=>new Intl.DateTimeFormat('es-ES',{day:'numeric',month:'long',year:'numeric'}).format(new Date(value+'T12:00:00'));
+      const nextOrderNumber=(date,exclude=null)=>{const day=Number(date.slice(8,10));const used=orders.filter(o=>o!==exclude&&o.date===date).map(o=>Number(String(o.number).split('-').pop())||0);return day+'-'+((used.length?Math.max(...used):0)+1);};
+      const cleanPhone=value=>{let n=value.replace(/\D/g,'');if(n.length===9)n='34'+n;return n;};
+      const confirmationMessage=(name,number,date,items)=>'Hola, '+name+'.\n\nLe confirmamos que su pedido nº '+number+' ha quedado registrado correctamente:\n\n'+items.map(x=>'• '+x.product+' — '+x.quantity+'\n  Preparación: '+x.prep).join('\n')+'\n\n📅 Día de recogida: '+prettyDate(date)+'.\n\nPor favor, indique el número de pedido '+number+' cuando venga a recogerlo.\n\nMuchas gracias por confiar en nosotros.\n\n'+shop;
+      const reminderMessage=o=>'Hola, '+o.name+'.\n\nLe recordamos que mañana puede recoger su pedido nº '+o.number+':\n\n'+o.items.map(x=>'• '+x.product+' — '+x.quantity+'\n  Preparación: '+x.prep).join('\n')+'\n\n📅 Recogida: '+prettyDate(o.date)+'.\n\nPor favor, indique el número de pedido '+o.number+' al recogerlo.\n\nMuchas gracias.\n\n'+shop;
+      const openWhatsApp=(phone,message)=>{const n=cleanPhone(phone);if(!n){alert('No hay un teléfono válido para abrir WhatsApp.');return;}if(window.Android?.openWhatsApp)Android.openWhatsApp(n,message);else window.open('https://wa.me/'+n+'?text='+encodeURIComponent(message),'_blank');};
+      root.querySelector('#to-summary').onclick=()=>{pickup=pickupInput.value||pickup;if(!pickup||!cart.length)return;if(orders.filter(o=>o.date===pickup&&o.status!=='Cancelado').length>=limit()){alert('Ese día ha alcanzado el límite máximo de '+limit()+' pedidos.');return;}const name=root.querySelector('#customer-name').value.trim()||'Cliente';const phone=root.querySelector('#customer-phone').value.trim()||'Sin teléfono';const deposit=root.querySelector('#deposit-status').value,amount=root.querySelector('#deposit-amount').value.trim();currentNumber=nextOrderNumber(pickup);const lines=cart.map(x=>x.product+' — '+x.quantity+' — '+x.prep).join('<br>');root.querySelector('#summary').innerHTML='<div class="summary-row"><span class="muted">Pedido</span><strong>'+currentNumber+'</strong></div><div class="summary-row"><span class="muted">Cliente</span><span>'+name+' · '+phone+'</span></div><div class="summary-row"><span class="muted">Productos</span><span>'+lines+'</span></div><div class="summary-row"><span class="muted">Señal</span><strong>'+deposit+(amount?' · '+amount:'')+'</strong></div><div class="summary-row"><span class="muted">Recogida</span><strong>'+prettyDate(pickup)+'</strong></div>';currentWhatsAppMessage=confirmationMessage(name,currentNumber,pickup,cart);root.querySelector('#whatsapp-preview').textContent=currentWhatsAppMessage;go(5);};
+      root.querySelector('#confirm').onclick=()=>{const phone=root.querySelector('#customer-phone').value.trim();const order={number:currentNumber,name:root.querySelector('#customer-name').value.trim()||'Cliente',phone,date:pickup,items:cart.map(x=>({...x})),status:'Pendiente',deposit:root.querySelector('#deposit-status').value,depositAmount:root.querySelector('#deposit-amount').value.trim()};orders.push(order);saveOrders();window.Android?.scheduleReminder?.(order.number,order.name,order.date);openWhatsApp(phone,currentWhatsAppMessage);root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('#done').hidden=false;root.querySelector('#done-text').textContent='El pedido '+currentNumber+' queda organizado para el '+prettyDate(pickup)+'. WhatsApp se ha abierto con el mensaje completo listo para enviar.';};
+      function resetOrder(){cart=[];pickup='';currentNumber='';selectedProduct='';selectedPrep='';pickupInput.value='';root.querySelector('#customer-name').value='';root.querySelector('#customer-phone').value='';root.querySelector('#deposit-status').value='Pendiente';root.querySelector('#deposit-amount').value='';renderCart();go(1);}
+      root.querySelector('#new-order').onclick=resetOrder;root.querySelector('#nav-new').onclick=resetOrder;
+      let ordersMode='day';
+      function renderOrders(){const selected=root.querySelector('#orders-date').value;const list=root.querySelector('#orders-list');list.innerHTML='';if(ordersMode==='day'&&!selected){list.innerHTML='<p class="muted">Selecciona un día para ver únicamente sus pedidos.</p>';return;}const grouped={};orders.filter(o=>ordersMode==='all'||o.date===selected).sort((a,b)=>a.date.localeCompare(b.date)||a.number.localeCompare(b.number)).forEach(o=>(grouped[o.date]??=[]).push(o));Object.entries(grouped).forEach(([date,rows])=>{const group=document.createElement('div');group.className='order-group';group.innerHTML='<strong>'+prettyDate(date)+' · '+rows.length+' pedidos</strong>';rows.forEach(o=>{const r=document.createElement('div');r.className='order-row';const details=o.items.map(x=>'<span>'+x.product+' · '+x.quantity+' · <strong>'+x.prep+'</strong></span>').join('<br>');r.innerHTML='<strong>'+o.number+'</strong><span><strong>'+o.name+'</strong> · '+o.phone+'<br><span class="muted text-small">'+details+'</span><br><span class="text-small"><strong>Señal: '+o.deposit+(o.depositAmount?' · '+o.depositAmount:'')+'</strong></span></span><div class="order-actions"><input type="date" class="form-control change-date" aria-label="Cambiar día" value="'+o.date+'"><select class="form-control change-status" aria-label="Estado"><option>Pendiente</option><option>Preparado</option><option>Entregado</option><option>Cancelado</option></select><div class="viz-row"><button type="button" class="btn remind">WhatsApp</button><button type="button" class="btn print-one">Imprimir</button></div></div>';r.querySelector('.change-status').value=o.status;r.querySelector('.change-status').onchange=e=>{o.status=e.target.value;saveOrders();if(['Entregado','Cancelado'].includes(o.status))window.Android?.cancelReminder?.(o.number);renderOrders();renderTomorrowBadge();};r.querySelector('.remind').onclick=()=>sendReminder(o);r.querySelector('.print-one').onclick=()=>printOrder(o);r.querySelector('.change-date').onchange=e=>moveOrder(o,e.target.value);group.appendChild(r);});list.appendChild(group);});if(!list.children.length)list.innerHTML='<p class="muted">No hay pedidos para ese día.</p>';}
+      function moveOrder(order,newDate){if(!newDate||newDate===order.date)return;if(orders.filter(o=>o!==order&&o.date===newDate&&o.status!=='Cancelado').length>=limit()){alert('El nuevo día ya ha alcanzado el límite máximo.');renderOrders();return;}const oldNumber=order.number;order.date=newDate;order.number=nextOrderNumber(newDate,order);saveOrders();window.Android?.cancelReminder?.(oldNumber);window.Android?.scheduleReminder?.(order.number,order.name,order.date);renderOrders();renderTomorrowBadge();}
+      function printOrder(o){const previous=document.body.innerHTML;document.body.innerHTML='<main style="padding:30px;font-family:sans-serif"><h1>LA POLLERÍA 2.0</h1><h2>PEDIDO '+o.number+'</h2><p><strong>Cliente:</strong> '+o.name+' · '+o.phone+'</p><p><strong>Recogida:</strong> '+prettyDate(o.date)+'</p><p><strong>Estado:</strong> '+o.status+' · <strong>Señal:</strong> '+o.deposit+(o.depositAmount?' · '+o.depositAmount:'')+'</p><hr><h3>Productos y preparación</h3>'+o.items.map(x=>'<p><strong>'+x.product+'</strong> — '+x.quantity+'<br>Preparación: '+x.prep+'</p>').join('')+'<hr><p>'+shop.replaceAll('\n','<br>')+'</p></main>';if(window.Android?.printPage)Android.printPage();else window.print();setTimeout(()=>location.reload(),1200);}
+      function sendReminder(o){openWhatsApp(o.phone,reminderMessage(o));}
+      root.querySelector('#nav-orders').onclick=()=>{ordersMode='day';root.querySelector('#orders-heading').textContent='Pedidos por día';root.querySelector('#orders-filter-label').hidden=false;root.querySelector('#orders-date').value='';showPanel('orders-screen');renderOrders();};root.querySelector('#nav-all-orders').onclick=()=>{ordersMode='all';root.querySelector('#orders-heading').textContent='Todos los pedidos ordenados por día';root.querySelector('#orders-filter-label').hidden=true;showPanel('orders-screen');renderOrders();};root.querySelector('#orders-date').onchange=renderOrders;root.querySelector('#print-day').onclick=()=>window.Android?.printPage?Android.printPage():window.print();
+      function renderTomorrowBadge(){const tomorrow=future(1),total=orders.filter(o=>o.date===tomorrow&&o.status!=='Cancelado'&&o.status!=='Entregado').length;root.querySelector('#nav-tomorrow').textContent='🔔 Mañana ('+total+')';}
+      root.querySelector('#nav-tomorrow').onclick=()=>{ordersMode='day';root.querySelector('#orders-heading').textContent='Pedidos para mañana';root.querySelector('#orders-filter-label').hidden=false;root.querySelector('#orders-date').value=future(1);showPanel('orders-screen');renderOrders();};
+      root.querySelector('#nav-backup').onclick=()=>{const data=JSON.stringify({createdAt:new Date().toISOString(),orders},null,2);if(window.Android?.shareBackup)Android.shareBackup(data);else{const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='copia-pedidos-navidad.json';a.click();URL.revokeObjectURL(url);}};
+      root.querySelector('#nav-restore').onclick=()=>root.querySelector('#restore-file').click();
+      root.querySelector('#restore-file').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!Array.isArray(data.orders))throw new Error();if(confirm('Se sustituirán los pedidos actuales por los de la copia. ¿Continuar?')){orders=data.orders;saveOrders();orders.filter(o=>!['Entregado','Cancelado'].includes(o.status)).forEach(o=>window.Android?.scheduleReminder?.(o.number,o.name,o.date));renderTomorrowBadge();alert('Copia restaurada correctamente.');}}catch(_){alert('El archivo no es una copia válida.');}};reader.readAsText(file);e.target.value='';};
+      function renderCount(){const from=root.querySelector('#count-from').value,to=root.querySelector('#count-to').value,counts={};orders.filter(o=>(!from||o.date>=from)&&(!to||o.date<=to)&&o.status!=='Cancelado').forEach(o=>o.items.forEach(x=>{const units=parseInt(x.quantity)||1;const key=x.product+'|'+x.prep;counts[key]=(counts[key]||0)+units;}));const box=root.querySelector('#count-list');box.innerHTML='<div class="count-row"><strong>Producto</strong><strong>Cantidad</strong><strong>Preparación</strong></div>';Object.entries(counts).sort().forEach(([key,total])=>{const [product,prep]=key.split('|');const r=document.createElement('div');r.className='count-row';r.innerHTML='<span>'+product+'</span><strong>'+total+'</strong><span>'+prep+'</span>';box.appendChild(r);});}
+      root.querySelector('#nav-count').onclick=()=>{showPanel('count-screen');renderCount();};root.querySelector('#count-from').onchange=renderCount;root.querySelector('#count-to').onchange=renderCount;root.querySelector('#print-count').onclick=()=>window.Android?.printPage?Android.printPage():window.print();
+      root.querySelector('#daily-limit').onchange=()=>{localStorage.setItem('polleria_daily_limit',root.querySelector('#daily-limit').value);renderCount();};
+      renderTomorrowBadge();
+    })();
+  </script>
+</div>
+</body>
+</html>
