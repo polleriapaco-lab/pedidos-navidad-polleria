@@ -7,15 +7,25 @@ android {
     namespace = "es.lapolleria.pedidos"
     compileSdk = 35
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("stable-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     defaultConfig {
         applicationId = "es.lapolleria.pedidosnavidad"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
 
     buildTypes {
+        getByName("debug") { signingConfig = signingConfigs.getByName("debug") }
         release { isMinifyEnabled = false }
     }
 
