@@ -45,15 +45,21 @@
     #navidad-app .btn-primary { min-height:48px; font-weight:700; }
     #navidad-app .order-group { margin-top:14px; }
     #navidad-app .order-row { display:grid; grid-template-columns:90px 1fr 220px; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); }
-    #navidad-app .order-actions { display:grid; gap:6px; }
+    #navidad-app .order-actions { display:grid; gap:7px; }
+    #navidad-app .status-badge { display:inline-flex; width:max-content; padding:5px 10px; border-radius:999px; font-weight:800; background:var(--muted); }
+    #navidad-app .status-badge.prepared { background:color-mix(in srgb,var(--green) 22%,var(--card)); color:var(--green); }
+    #navidad-app .edit-items { display:grid; gap:10px; margin:12px 0; }
+    #navidad-app .edit-item { display:grid; grid-template-columns:1.25fr .8fr 1.25fr auto; gap:9px; align-items:end; padding:12px; border:1px solid var(--border); border-radius:14px; background:var(--card); }
+    #navidad-app .edit-item .form-label { margin:0; }
+    #navidad-app .danger { color:#fff; background:#a52b2b; border-color:#c74646; }
     #navidad-app .count-row { display:grid; grid-template-columns:1fr 100px 1fr; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
     #navidad-app [hidden] { display:none !important; }
-    @media(max-width:650px){ #navidad-app .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));} #navidad-app .choice-grid{grid-template-columns:1fr;} #navidad-app .fields{grid-template-columns:1fr;} #navidad-app .calendar{grid-template-columns:repeat(2,minmax(0,1fr));} #navidad-app .step span{display:none;} }
+    @media(max-width:650px){ #navidad-app .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));} #navidad-app .choice-grid{grid-template-columns:1fr;} #navidad-app .fields{grid-template-columns:1fr;} #navidad-app .calendar{grid-template-columns:repeat(2,minmax(0,1fr));} #navidad-app .step span{display:none;} #navidad-app .order-row{grid-template-columns:1fr;} #navidad-app .edit-item{grid-template-columns:1fr;} }
   </style>
 
   <div class="appbar">
     <div class="brand"><div class="mark">🐔</div><div>LA POLLERÍA 2.0<br><span class="text-small">Pedidos de Navidad</span></div></div>
-    <div class="nav-actions"><button type="button" class="btn" id="nav-new">➕ Pedido</button><button type="button" class="btn" id="nav-orders">📅 Por día</button><button type="button" class="btn" id="nav-all-orders">📋 Todos</button><button type="button" class="btn" id="nav-count">🧮 Recuento</button><button type="button" class="btn" id="nav-tomorrow">🔔 Mañana</button><button type="button" class="btn" id="nav-backup">💾 Copia</button><button type="button" class="btn" id="nav-restore">↩ Restaurar</button><input type="file" id="restore-file" accept="application/json" hidden></div>
+    <div class="nav-actions"><button type="button" class="btn" id="nav-new">➕ Pedido</button><button type="button" class="btn" id="nav-orders">📅 Por día</button><button type="button" class="btn" id="nav-all-orders">📋 Activos</button><button type="button" class="btn" id="nav-history">📚 Historial</button><button type="button" class="btn" id="nav-count">🧮 Recuento</button><button type="button" class="btn" id="nav-tomorrow">🔔 Mañana</button><button type="button" class="btn" id="nav-backup">💾 Copia</button><button type="button" class="btn" id="nav-restore">↩ Restaurar</button><input type="file" id="restore-file" accept="application/json" hidden></div>
   </div>
 
   <div class="steps" aria-label="Progreso del pedido">
@@ -125,6 +131,25 @@
     <div class="actions"><button type="button" class="btn" id="print-day">Imprimir listado</button></div>
   </section>
 
+  <section class="panel" id="edit-screen" hidden>
+    <h3>✏️ Modificar pedido <span id="edit-number"></span></h3>
+    <div class="fields">
+      <label class="form-label">Nombre<input class="form-control" id="edit-name"></label>
+      <label class="form-label">Teléfono / WhatsApp<input class="form-control" id="edit-phone" inputmode="tel"></label>
+      <label class="form-label">Día de recogida<input type="date" class="form-control" id="edit-date"></label>
+      <label class="form-label">Señal<select class="form-control" id="edit-deposit"><option>Pendiente</option><option>Entregada</option></select></label>
+      <label class="form-label">Importe de la señal<input class="form-control" id="edit-deposit-amount" placeholder="Ej. 20 €"></label>
+    </div>
+    <h3>Productos del pedido</h3>
+    <div class="edit-items" id="edit-items"></div>
+    <button type="button" class="btn" id="edit-add-item">＋ Añadir otro producto</button>
+    <p class="muted text-small">Al guardar cambios, un pedido que estuviera preparado volverá a Pendiente para evitar errores.</p>
+    <div class="actions">
+      <button type="button" class="btn" id="edit-cancel">← Volver sin guardar</button>
+      <div class="viz-row"><button type="button" class="btn" id="edit-save">Guardar cambios</button><button type="button" class="btn btn-primary" id="edit-save-whatsapp">Guardar y avisar por WhatsApp</button></div>
+    </div>
+  </section>
+
   <section class="panel" id="count-screen" hidden>
     <h3>Recuento para realizar el encargo</h3>
     <div class="fields"><label class="form-label">Desde<input type="date" class="form-control" id="count-from"></label><label class="form-label">Hasta<input type="date" class="form-control" id="count-to"></label></div>
@@ -139,7 +164,7 @@
       const products=[['Pollo normal','🐔'],['Pollo de corral','🐓'],['Pollo campero','🐔'],['Pollo payés','🐓'],['Pollo relleno','🍗'],['Capón','🐔'],['Pularda','🐔'],['Pularda rellena','🍗'],['Pava de bellota','🦃'],['Pavo de bellota','🦃'],['Pavo de granja','🦃'],['Pava de granja','🦃'],['Pavitas','🦃'],['Picantones','🐤'],['Pato','🦆'],['Oca','🪿'],['Pintada','🐦'],['Pacorritos','🐥'],['Gallina de corral','🐓'],['Otros','✏️']];
       const preps=[['Entero','🐔'],['Trozos','🔪'],['Deshuesado','🍖'],['Para trufar','✨'],['Otros','✍️']];
       const shop='LA POLLERÍA 2.0\nMercado de Chamartín · Puestos 61-62 · Planta alta\n28016 Madrid\nTeléfono: 91 457 15 89';
-      let step=1,selectedProduct='',selectedPrep='',quantity=1,cart=[],pickup='',currentNumber='',currentWhatsAppMessage='';
+      let step=1,selectedProduct='',selectedPrep='',quantity=1,cart=[],pickup='',currentNumber='',currentWhatsAppMessage='',editingOrder=null;
       const iso=d=>d.toISOString().slice(0,10);
       const future=n=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d);};
       let orders=JSON.parse(localStorage.getItem('polleria_orders')||'[]');
@@ -168,18 +193,79 @@
       const nextOrderNumber=(date,exclude=null)=>{const day=Number(date.slice(8,10));const used=orders.filter(o=>o!==exclude&&o.date===date).map(o=>Number(String(o.number).split('-').pop())||0);return day+'-'+((used.length?Math.max(...used):0)+1);};
       const cleanPhone=value=>{let n=value.replace(/\D/g,'');if(n.length===9)n='34'+n;return n;};
       const confirmationMessage=(name,number,date,items)=>'Hola, '+name+'.\n\nLe confirmamos que su pedido nº '+number+' ha quedado registrado correctamente:\n\n'+items.map(x=>'• '+x.product+' — '+x.quantity+'\n  Preparación: '+x.prep).join('\n')+'\n\n📅 Día de recogida: '+prettyDate(date)+'.\n\nPor favor, indique el número de pedido '+number+' cuando venga a recogerlo.\n\nMuchas gracias por confiar en nosotros.\n\n'+shop;
-      const reminderMessage=o=>'Hola, '+o.name+'.\n\nLe recordamos que mañana puede recoger su pedido nº '+o.number+':\n\n'+o.items.map(x=>'• '+x.product+' — '+x.quantity+'\n  Preparación: '+x.prep).join('\n')+'\n\n📅 Recogida: '+prettyDate(o.date)+'.\n\nPor favor, indique el número de pedido '+o.number+' al recogerlo.\n\nMuchas gracias.\n\n'+shop;
+      const reminderMessage=o=>'Hola, '+o.name+'.\n\nLe recordamos su pedido nº '+o.number+':\n\n'+o.items.map(x=>'• '+x.product+' — '+x.quantity+'\n  Preparación: '+x.prep).join('\n')+'\n\n📅 Recogida: '+prettyDate(o.date)+'.\n\nPor favor, indique el número de pedido '+o.number+' al recogerlo.\n\nMuchas gracias.\n\n'+shop;
+      const preparedMessage=o=>'Hola, '+o.name+'.\n\nLe informamos de que su pedido nº '+o.number+' ya está preparado y puede pasar a recogerlo.\n\n'+o.items.map(x=>'• '+x.product+' — '+x.quantity+'\n  Preparación: '+x.prep).join('\n')+'\n\n📅 Día de recogida: '+prettyDate(o.date)+'.\n\nPor favor, indique el número de pedido '+o.number+'.\n\nMuchas gracias.\n\n'+shop;
+      const updatedMessage=o=>'Hola, '+o.name+'.\n\nHemos actualizado su pedido nº '+o.number+':\n\n'+o.items.map(x=>'• '+x.product+' — '+x.quantity+'\n  Preparación: '+x.prep).join('\n')+'\n\n📅 Nuevo día de recogida: '+prettyDate(o.date)+'.\n\nMuchas gracias.\n\n'+shop;
       const openWhatsApp=(phone,message)=>{const n=cleanPhone(phone);if(!n){alert('No hay un teléfono válido para abrir WhatsApp.');return;}if(window.Android?.openWhatsApp)Android.openWhatsApp(n,message);else window.open('https://wa.me/'+n+'?text='+encodeURIComponent(message),'_blank');};
       root.querySelector('#to-summary').onclick=()=>{pickup=pickupInput.value||pickup;if(!pickup||!cart.length)return;if(orders.filter(o=>o.date===pickup&&o.status!=='Cancelado').length>=limit()){alert('Ese día ha alcanzado el límite máximo de '+limit()+' pedidos.');return;}const name=root.querySelector('#customer-name').value.trim()||'Cliente';const phone=root.querySelector('#customer-phone').value.trim()||'Sin teléfono';const deposit=root.querySelector('#deposit-status').value,amount=root.querySelector('#deposit-amount').value.trim();currentNumber=nextOrderNumber(pickup);const lines=cart.map(x=>x.product+' — '+x.quantity+' — '+x.prep).join('<br>');root.querySelector('#summary').innerHTML='<div class="summary-row"><span class="muted">Pedido</span><strong>'+currentNumber+'</strong></div><div class="summary-row"><span class="muted">Cliente</span><span>'+name+' · '+phone+'</span></div><div class="summary-row"><span class="muted">Productos</span><span>'+lines+'</span></div><div class="summary-row"><span class="muted">Señal</span><strong>'+deposit+(amount?' · '+amount:'')+'</strong></div><div class="summary-row"><span class="muted">Recogida</span><strong>'+prettyDate(pickup)+'</strong></div>';currentWhatsAppMessage=confirmationMessage(name,currentNumber,pickup,cart);root.querySelector('#whatsapp-preview').textContent=currentWhatsAppMessage;go(5);};
       root.querySelector('#confirm').onclick=()=>{const phone=root.querySelector('#customer-phone').value.trim();const order={number:currentNumber,name:root.querySelector('#customer-name').value.trim()||'Cliente',phone,date:pickup,items:cart.map(x=>({...x})),status:'Pendiente',deposit:root.querySelector('#deposit-status').value,depositAmount:root.querySelector('#deposit-amount').value.trim()};orders.push(order);saveOrders();window.Android?.scheduleReminder?.(order.number,order.name,order.date);openWhatsApp(phone,currentWhatsAppMessage);root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('#done').hidden=false;root.querySelector('#done-text').textContent='El pedido '+currentNumber+' queda organizado para el '+prettyDate(pickup)+'. WhatsApp se ha abierto con el mensaje completo listo para enviar.';};
       function resetOrder(){cart=[];pickup='';currentNumber='';selectedProduct='';selectedPrep='';pickupInput.value='';root.querySelector('#customer-name').value='';root.querySelector('#customer-phone').value='';root.querySelector('#deposit-status').value='Pendiente';root.querySelector('#deposit-amount').value='';renderCart();go(1);}
       root.querySelector('#new-order').onclick=resetOrder;root.querySelector('#nav-new').onclick=resetOrder;
       let ordersMode='day';
-      function renderOrders(){const selected=root.querySelector('#orders-date').value;const list=root.querySelector('#orders-list');list.innerHTML='';if(ordersMode==='day'&&!selected){list.innerHTML='<p class="muted">Selecciona un día para ver únicamente sus pedidos.</p>';return;}const grouped={};orders.filter(o=>ordersMode==='all'||o.date===selected).sort((a,b)=>a.date.localeCompare(b.date)||a.number.localeCompare(b.number)).forEach(o=>(grouped[o.date]??=[]).push(o));Object.entries(grouped).forEach(([date,rows])=>{const group=document.createElement('div');group.className='order-group';group.innerHTML='<strong>'+prettyDate(date)+' · '+rows.length+' pedidos</strong>';rows.forEach(o=>{const r=document.createElement('div');r.className='order-row';const details=o.items.map(x=>'<span>'+x.product+' · '+x.quantity+' · <strong>'+x.prep+'</strong></span>').join('<br>');r.innerHTML='<strong>'+o.number+'</strong><span><strong>'+o.name+'</strong> · '+o.phone+'<br><span class="muted text-small">'+details+'</span><br><span class="text-small"><strong>Señal: '+o.deposit+(o.depositAmount?' · '+o.depositAmount:'')+'</strong></span></span><div class="order-actions"><input type="date" class="form-control change-date" aria-label="Cambiar día" value="'+o.date+'"><select class="form-control change-status" aria-label="Estado"><option>Pendiente</option><option>Preparado</option><option>Entregado</option><option>Cancelado</option></select><div class="viz-row"><button type="button" class="btn remind">WhatsApp</button><button type="button" class="btn print-one">Imprimir</button></div></div>';r.querySelector('.change-status').value=o.status;r.querySelector('.change-status').onchange=e=>{o.status=e.target.value;saveOrders();if(['Entregado','Cancelado'].includes(o.status))window.Android?.cancelReminder?.(o.number);renderOrders();renderTomorrowBadge();};r.querySelector('.remind').onclick=()=>sendReminder(o);r.querySelector('.print-one').onclick=()=>printOrder(o);r.querySelector('.change-date').onchange=e=>moveOrder(o,e.target.value);group.appendChild(r);});list.appendChild(group);});if(!list.children.length)list.innerHTML='<p class="muted">No hay pedidos para ese día.</p>';}
-      function moveOrder(order,newDate){if(!newDate||newDate===order.date)return;if(orders.filter(o=>o!==order&&o.date===newDate&&o.status!=='Cancelado').length>=limit()){alert('El nuevo día ya ha alcanzado el límite máximo.');renderOrders();return;}const oldNumber=order.number;order.date=newDate;order.number=nextOrderNumber(newDate,order);saveOrders();window.Android?.cancelReminder?.(oldNumber);window.Android?.scheduleReminder?.(order.number,order.name,order.date);renderOrders();renderTomorrowBadge();}
+      function activeOrder(o){return !['Entregado','Cancelado'].includes(o.status);}
+      function statusClass(status){return status==='Preparado'?' prepared':'';}
+      function renderOrders(){
+        const selected=root.querySelector('#orders-date').value,list=root.querySelector('#orders-list');list.innerHTML='';
+        if(ordersMode==='day'&&!selected){list.innerHTML='<p class="muted">Selecciona un día para ver únicamente sus pedidos activos.</p>';return;}
+        const visible=orders.filter(o=>{
+          if(ordersMode==='history')return !activeOrder(o);
+          if(!activeOrder(o))return false;
+          return ordersMode==='all'||o.date===selected;
+        }).sort((a,b)=>b.date.localeCompare(a.date)||a.number.localeCompare(b.number));
+        const grouped={};visible.forEach(o=>(grouped[o.date]??=[]).push(o));
+        Object.entries(grouped).forEach(([date,rows])=>{
+          const group=document.createElement('div');group.className='order-group';group.innerHTML='<strong>'+prettyDate(date)+' · '+rows.length+' pedidos</strong>';
+          rows.forEach(o=>{
+            const r=document.createElement('div');r.className='order-row';
+            const details=o.items.map(x=>'<span>'+x.product+' · '+x.quantity+' · <strong>'+x.prep+'</strong></span>').join('<br>');
+            const active=activeOrder(o);
+            r.innerHTML='<strong>'+o.number+'</strong><span><strong>'+o.name+'</strong> · '+o.phone+'<br><span class="muted text-small">'+details+'</span><br><span class="text-small"><strong>Señal: '+o.deposit+(o.depositAmount?' · '+o.depositAmount:'')+'</strong></span><br><span class="status-badge'+statusClass(o.status)+'">'+o.status+'</span></span><div class="order-actions">'+(active?'<button type="button" class="btn edit-order">✏️ Modificar pedido</button><button type="button" class="btn toggle-ready">'+(o.status==='Preparado'?'↩ Volver a pendiente':'🟠 Marcar preparado')+'</button><button type="button" class="btn btn-primary remind">📲 '+(o.status==='Preparado'?'Avisar: ya preparado':'Enviar recordatorio')+'</button><button type="button" class="btn delivered">✅ Entregado y quitar de activos</button><button type="button" class="btn danger cancel-order">Cancelar pedido</button>':'<button type="button" class="btn restore-order">↩ Recuperar pedido</button>')+'<button type="button" class="btn print-one">Imprimir</button></div>';
+            const edit=r.querySelector('.edit-order');if(edit)edit.onclick=()=>openOrderEditor(o);
+            const ready=r.querySelector('.toggle-ready');if(ready)ready.onclick=()=>{o.status=o.status==='Preparado'?'Pendiente':'Preparado';saveOrders();renderOrders();renderTomorrowBadge();};
+            const remind=r.querySelector('.remind');if(remind)remind.onclick=()=>sendReminder(o);
+            const delivered=r.querySelector('.delivered');if(delivered)delivered.onclick=()=>{if(confirm('¿Marcar el pedido '+o.number+' como entregado? Desaparecerá de los pedidos activos, pero seguirá en el historial y los recuentos.')){o.status='Entregado';o.deliveredAt=new Date().toISOString();saveOrders();window.Android?.cancelReminder?.(o.number);renderOrders();renderTomorrowBadge();}};
+            const cancel=r.querySelector('.cancel-order');if(cancel)cancel.onclick=()=>{if(confirm('¿Cancelar este pedido? Se conservará en el historial, pero no contará en los recuentos.')){o.status='Cancelado';saveOrders();window.Android?.cancelReminder?.(o.number);renderOrders();renderTomorrowBadge();}};
+            const restore=r.querySelector('.restore-order');if(restore)restore.onclick=()=>{o.status='Pendiente';delete o.deliveredAt;saveOrders();window.Android?.scheduleReminder?.(o.number,o.name,o.date);renderOrders();renderTomorrowBadge();};
+            r.querySelector('.print-one').onclick=()=>printOrder(o);group.appendChild(r);
+          });list.appendChild(group);
+        });
+        if(!list.children.length)list.innerHTML='<p class="muted">'+(ordersMode==='history'?'Todavía no hay pedidos entregados o cancelados.':'No hay pedidos activos con estos criterios.')+'</p>';
+      }
+      function addEditItem(item={product:'',quantity:'1 unidad',prep:'Entero'}){
+        const row=document.createElement('div');row.className='edit-item';
+        row.innerHTML='<label class="form-label">Producto<input class="form-control edit-product"></label><label class="form-label">Cantidad<input class="form-control edit-quantity"></label><label class="form-label">Preparación<input class="form-control edit-prep"></label><button type="button" class="btn danger remove-edit-item">Quitar</button>';
+        row.querySelector('.edit-product').value=item.product||'';
+        row.querySelector('.edit-quantity').value=item.quantity||'';
+        row.querySelector('.edit-prep').value=item.prep||'';
+        row.querySelector('.remove-edit-item').onclick=()=>{if(root.querySelectorAll('.edit-item').length>1)row.remove();else alert('El pedido debe tener al menos un producto.');};
+        root.querySelector('#edit-items').appendChild(row);
+      }
+      function openOrderEditor(order){
+        editingOrder=order;root.querySelector('#edit-number').textContent=order.number;root.querySelector('#edit-name').value=order.name;root.querySelector('#edit-phone').value=order.phone;root.querySelector('#edit-date').value=order.date;root.querySelector('#edit-deposit').value=order.deposit||'Pendiente';root.querySelector('#edit-deposit-amount').value=order.depositAmount||'';root.querySelector('#edit-items').innerHTML='';order.items.forEach(addEditItem);showPanel('edit-screen');
+      }
+      function closeEditor(){showPanel('orders-screen');renderOrders();}
+      function saveEditedOrder(sendWhatsApp){
+        if(!editingOrder)return;
+        const newDate=root.querySelector('#edit-date').value;
+        const items=[...root.querySelectorAll('.edit-item')].map(row=>({product:row.querySelector('.edit-product').value.trim(),quantity:row.querySelector('.edit-quantity').value.trim(),prep:row.querySelector('.edit-prep').value.trim()})).filter(x=>x.product&&x.quantity&&x.prep);
+        if(!newDate){alert('Indique el día de recogida.');return;}
+        if(!items.length){alert('El pedido debe tener al menos un producto completo.');return;}
+        if(orders.filter(o=>o!==editingOrder&&o.date===newDate&&o.status!=='Cancelado').length>=limit()){alert('El nuevo día ya ha alcanzado el límite máximo.');return;}
+        const oldNumber=editingOrder.number,oldDate=editingOrder.date;
+        editingOrder.name=root.querySelector('#edit-name').value.trim()||'Cliente';editingOrder.phone=root.querySelector('#edit-phone').value.trim();editingOrder.date=newDate;editingOrder.items=items;editingOrder.deposit=root.querySelector('#edit-deposit').value;editingOrder.depositAmount=root.querySelector('#edit-deposit-amount').value.trim();
+        if(oldDate!==newDate)editingOrder.number=nextOrderNumber(newDate,editingOrder);
+        if(editingOrder.status==='Preparado')editingOrder.status='Pendiente';
+        editingOrder.updatedAt=new Date().toISOString();saveOrders();window.Android?.cancelReminder?.(oldNumber);window.Android?.scheduleReminder?.(editingOrder.number,editingOrder.name,editingOrder.date);
+        if(sendWhatsApp)openWhatsApp(editingOrder.phone,updatedMessage(editingOrder));
+        closeEditor();renderTomorrowBadge();
+      }
+      root.querySelector('#edit-add-item').onclick=()=>addEditItem();
+      root.querySelector('#edit-cancel').onclick=closeEditor;
+      root.querySelector('#edit-save').onclick=()=>saveEditedOrder(false);
+      root.querySelector('#edit-save-whatsapp').onclick=()=>saveEditedOrder(true);
       function printOrder(o){const previous=document.body.innerHTML;document.body.innerHTML='<main style="padding:30px;font-family:sans-serif"><h1>LA POLLERÍA 2.0</h1><h2>PEDIDO '+o.number+'</h2><p><strong>Cliente:</strong> '+o.name+' · '+o.phone+'</p><p><strong>Recogida:</strong> '+prettyDate(o.date)+'</p><p><strong>Estado:</strong> '+o.status+' · <strong>Señal:</strong> '+o.deposit+(o.depositAmount?' · '+o.depositAmount:'')+'</p><hr><h3>Productos y preparación</h3>'+o.items.map(x=>'<p><strong>'+x.product+'</strong> — '+x.quantity+'<br>Preparación: '+x.prep+'</p>').join('')+'<hr><p>'+shop.replaceAll('\n','<br>')+'</p></main>';if(window.Android?.printPage)Android.printPage();else window.print();setTimeout(()=>location.reload(),1200);}
-      function sendReminder(o){openWhatsApp(o.phone,reminderMessage(o));}
-      root.querySelector('#nav-orders').onclick=()=>{ordersMode='day';root.querySelector('#orders-heading').textContent='Pedidos por día';root.querySelector('#orders-filter-label').hidden=false;root.querySelector('#orders-date').value='';showPanel('orders-screen');renderOrders();};root.querySelector('#nav-all-orders').onclick=()=>{ordersMode='all';root.querySelector('#orders-heading').textContent='Todos los pedidos ordenados por día';root.querySelector('#orders-filter-label').hidden=true;showPanel('orders-screen');renderOrders();};root.querySelector('#orders-date').onchange=renderOrders;root.querySelector('#print-day').onclick=()=>window.Android?.printPage?Android.printPage():window.print();
+      function sendReminder(o){openWhatsApp(o.phone,o.status==='Preparado'?preparedMessage(o):reminderMessage(o));}
+      root.querySelector('#nav-orders').onclick=()=>{ordersMode='day';root.querySelector('#orders-heading').textContent='Pedidos activos por día';root.querySelector('#orders-filter-label').hidden=false;root.querySelector('#orders-date').value='';showPanel('orders-screen');renderOrders();};root.querySelector('#nav-all-orders').onclick=()=>{ordersMode='all';root.querySelector('#orders-heading').textContent='Todos los pedidos activos';root.querySelector('#orders-filter-label').hidden=true;showPanel('orders-screen');renderOrders();};root.querySelector('#nav-history').onclick=()=>{ordersMode='history';root.querySelector('#orders-heading').textContent='Historial de entregados y cancelados';root.querySelector('#orders-filter-label').hidden=true;showPanel('orders-screen');renderOrders();};root.querySelector('#orders-date').onchange=renderOrders;root.querySelector('#print-day').onclick=()=>window.Android?.printPage?Android.printPage():window.print();
       function renderTomorrowBadge(){const tomorrow=future(1),total=orders.filter(o=>o.date===tomorrow&&o.status!=='Cancelado'&&o.status!=='Entregado').length;root.querySelector('#nav-tomorrow').textContent='🔔 Mañana ('+total+')';}
       root.querySelector('#nav-tomorrow').onclick=()=>{ordersMode='day';root.querySelector('#orders-heading').textContent='Pedidos para mañana';root.querySelector('#orders-filter-label').hidden=false;root.querySelector('#orders-date').value=future(1);showPanel('orders-screen');renderOrders();};
       root.querySelector('#nav-backup').onclick=()=>{const data=JSON.stringify({createdAt:new Date().toISOString(),orders},null,2);if(window.Android?.shareBackup)Android.shareBackup(data);else{const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='copia-pedidos-navidad.json';a.click();URL.revokeObjectURL(url);}};
