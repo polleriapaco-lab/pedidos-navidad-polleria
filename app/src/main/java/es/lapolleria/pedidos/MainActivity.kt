@@ -22,6 +22,8 @@ import android.webkit.WebViewClient
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.FileProvider
+import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -99,14 +101,38 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        private fun shareFile(fileName: String, contents: String, mimeType: String, chooserTitle: String) {
+            val directory = File(cacheDir, "exports").apply { mkdirs() }
+            val safeName = fileName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+            val file = File(directory, safeName).apply { writeText(contents, Charsets.UTF_8) }
+            val uri = FileProvider.getUriForFile(
+                this@MainActivity,
+                "${packageName}.fileprovider",
+                file
+            )
+            startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                type = mimeType
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }, chooserTitle))
+        }
+
         @JavascriptInterface
         fun shareBackup(json: String) {
             runOnUiThread {
-                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                    type = "application/json"
-                    putExtra(Intent.EXTRA_TEXT, json)
-                    putExtra(Intent.EXTRA_TITLE, "Copia de pedidos de Navidad")
-                }, "Guardar o compartir copia"))
+                shareFile(
+                    "copia-pedidos-navidad.json",
+                    json,
+                    "application/json",
+                    "Guardar o compartir copia"
+                )
+            }
+        }
+
+        @JavascriptInterface
+        fun shareCsv(fileName: String, csv: String) {
+            runOnUiThread {
+                shareFile(fileName, csv, "text/csv", "Guardar o compartir archivo de Excel")
             }
         }
 
