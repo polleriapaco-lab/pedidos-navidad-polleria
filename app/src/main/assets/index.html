@@ -48,6 +48,11 @@
     #navidad-app .order-actions { display:grid; gap:7px; }
     #navidad-app .status-badge { display:inline-flex; width:max-content; padding:5px 10px; border-radius:999px; font-weight:800; background:var(--muted); }
     #navidad-app .status-badge.prepared { background:color-mix(in srgb,var(--green) 22%,var(--card)); color:var(--green); }
+    #navidad-app .client-lookup { display:grid; gap:10px; margin-bottom:15px; padding:14px; border:2px solid color-mix(in srgb,var(--primary) 35%,var(--border)); }
+    #navidad-app .client-suggestions { display:flex; flex-wrap:wrap; gap:7px; }
+    #navidad-app .client-card { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:start; padding:14px 0; border-bottom:1px solid var(--border); }
+    #navidad-app .client-history { grid-column:1/-1; display:grid; gap:8px; padding:10px; border-radius:12px; background:var(--card); }
+    #navidad-app .history-order { padding:8px 0; border-bottom:1px solid var(--border); }
     #navidad-app .edit-items { display:grid; gap:10px; margin:12px 0; }
     #navidad-app .edit-item { display:grid; grid-template-columns:1.25fr .8fr 1.25fr auto; gap:9px; align-items:end; padding:12px; border:1px solid var(--border); border-radius:14px; background:var(--card); }
     #navidad-app .edit-item .form-label { margin:0; }
@@ -59,7 +64,7 @@
 
   <div class="appbar">
     <div class="brand"><div class="mark">🐔</div><div>LA POLLERÍA 2.0<br><span class="text-small">Pedidos de Navidad</span></div></div>
-    <div class="nav-actions"><button type="button" class="btn" id="nav-new">➕ Pedido</button><button type="button" class="btn" id="nav-orders">📅 Por día</button><button type="button" class="btn" id="nav-all-orders">📋 Activos</button><button type="button" class="btn" id="nav-history">📚 Historial</button><button type="button" class="btn" id="nav-count">🧮 Recuento</button><button type="button" class="btn" id="nav-tomorrow">🔔 Mañana</button><button type="button" class="btn" id="nav-backup">💾 Copia</button><button type="button" class="btn" id="nav-restore">↩ Restaurar</button><input type="file" id="restore-file" accept="application/json" hidden></div>
+    <div class="nav-actions"><button type="button" class="btn" id="nav-new">➕ Pedido</button><button type="button" class="btn" id="nav-orders">📅 Por día</button><button type="button" class="btn" id="nav-all-orders">📋 Activos</button><button type="button" class="btn" id="nav-clients">📒 Clientes</button><button type="button" class="btn" id="nav-history">📚 Historial</button><button type="button" class="btn" id="nav-count">🧮 Recuento</button><button type="button" class="btn" id="nav-tomorrow">🔔 Mañana</button><button type="button" class="btn" id="nav-backup">💾 Copia</button><button type="button" class="btn" id="nav-restore">↩ Restaurar</button><input type="file" id="restore-file" accept="application/json" hidden></div>
   </div>
 
   <div class="steps" aria-label="Progreso del pedido">
@@ -72,6 +77,11 @@
 
   <section class="panel" id="screen-1">
     <h3>Datos del cliente</h3>
+    <div class="client-lookup card">
+      <label class="form-label">🔎 Buscar cliente habitual<input class="form-control" id="client-search" autocomplete="off" placeholder="Escribe su nombre o teléfono"></label>
+      <div class="client-suggestions" id="client-suggestions"></div>
+      <p class="muted text-small" id="client-status">Si es nuevo, escribe sus datos. Se guardará automáticamente al confirmar.</p>
+    </div>
     <div class="fields">
       <label class="form-label">Nombre completo<input class="form-control" id="customer-name" placeholder="Ej. María García"></label>
       <label class="form-label">Teléfono / WhatsApp<input class="form-control" id="customer-phone" inputmode="tel" placeholder="Ej. 612 345 678"></label>
@@ -128,7 +138,14 @@
     <h3 id="orders-heading">Pedidos por día</h3>
     <label class="form-label" id="orders-filter-label">Elige el día de recogida<input type="date" class="form-control" id="orders-date"></label>
     <div id="orders-list"></div>
-    <div class="actions"><button type="button" class="btn" id="print-day">Imprimir listado</button></div>
+    <div class="actions"><button type="button" class="btn" id="print-day">🖨 Imprimir / guardar PDF del día</button><button type="button" class="btn" id="excel-day">📊 Exportar día para Excel</button></div>
+  </section>
+
+  <section class="panel" id="clients-screen" hidden>
+    <h3>📒 Agenda e historial de clientes</h3>
+    <label class="form-label">Buscar por nombre o teléfono<input class="form-control" id="agenda-search" placeholder="Nombre o teléfono"></label>
+    <p class="muted" id="agenda-count"></p>
+    <div id="agenda-list"></div>
   </section>
 
   <section class="panel" id="edit-screen" hidden>
@@ -168,8 +185,53 @@
       const iso=d=>d.toISOString().slice(0,10);
       const future=n=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d);};
       let orders=JSON.parse(localStorage.getItem('polleria_orders')||'[]');
+      let clients=JSON.parse(localStorage.getItem('polleria_clients')||'[]');
+      const phoneKey=v=>(v||'').replace(/\D/g,'').replace(/^34(?=\d{9}$)/,'');
+      const nameKey=v=>(v||'').trim().toLocaleLowerCase('es');
+      const saveClients=()=>localStorage.setItem('polleria_clients',JSON.stringify(clients));
+      function upsertClient(name,phone){
+        const pk=phoneKey(phone),nk=nameKey(name);if(!pk&&!nk)return null;
+        let client=clients.find(x=>(pk&&phoneKey(x.phone)===pk)||(!pk&&nameKey(x.name)===nk));
+        if(client){client.name=name||client.name;client.phone=phone||client.phone;client.updatedAt=new Date().toISOString();}
+        else{client={id:'cli-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),name:name||'Cliente',phone:phone||'',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};clients.push(client);}
+        saveClients();return client;
+      }
+      orders.forEach(o=>upsertClient(o.name,o.phone));
       const saveOrders=()=>localStorage.setItem('polleria_orders',JSON.stringify(orders));
       const grid=root.querySelector('#product-grid'),prepGrid=root.querySelector('#prep-grid');
+      let selectedClientId=null;
+      function matchingClients(query){
+        const q=nameKey(query),digits=phoneKey(query);if(!q&&!digits)return[];
+        return clients.filter(x=>nameKey(x.name).includes(q)||(digits&&phoneKey(x.phone).includes(digits))).sort((a,b)=>a.name.localeCompare(b.name,'es')).slice(0,10);
+      }
+      function chooseClient(client){
+        selectedClientId=client.id;root.querySelector('#customer-name').value=client.name;root.querySelector('#customer-phone').value=client.phone;root.querySelector('#client-search').value=client.name;root.querySelector('#client-suggestions').innerHTML='';root.querySelector('#client-status').textContent='✅ Cliente encontrado. Sus datos ya están rellenados.';
+      }
+      function renderClientSuggestions(){
+        const box=root.querySelector('#client-suggestions'),matches=matchingClients(root.querySelector('#client-search').value);box.innerHTML='';
+        matches.forEach(client=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='👤 '+client.name+' · '+client.phone;b.onclick=()=>chooseClient(client);box.appendChild(b);});
+        root.querySelector('#client-status').textContent=matches.length?matches.length+' cliente'+(matches.length===1?' encontrado':'s encontrados')+'. Pulsa para seleccionarlo.':'Si es nuevo, escribe sus datos. Se guardará automáticamente al confirmar.';
+      }
+      function clientOrders(client){
+        const pk=phoneKey(client.phone),nk=nameKey(client.name);
+        return orders.filter(o=>(pk&&phoneKey(o.phone)===pk)||(!pk&&nameKey(o.name)===nk)).sort((a,b)=>b.date.localeCompare(a.date));
+      }
+      function renderAgenda(){
+        const q=root.querySelector('#agenda-search').value,box=root.querySelector('#agenda-list'),matches=q?matchingClients(q):[...clients].sort((a,b)=>a.name.localeCompare(b.name,'es'));box.innerHTML='';root.querySelector('#agenda-count').textContent=matches.length+' cliente'+(matches.length===1?' guardado':'s guardados');
+        matches.forEach(client=>{
+          const row=document.createElement('div');row.className='client-card';
+          const info=document.createElement('div');info.innerHTML='<strong>'+client.name+'</strong><br><span class="muted">'+client.phone+'</span>';
+          const actions=document.createElement('div');actions.className='viz-row';
+          const use=document.createElement('button');use.type='button';use.className='btn btn-primary';use.textContent='＋ Nuevo pedido';use.onclick=()=>{resetOrder();chooseClient(client);};
+          const history=document.createElement('button');history.type='button';history.className='btn';history.textContent='Ver historial';
+          const historyBox=document.createElement('div');historyBox.className='client-history';historyBox.hidden=true;
+          history.onclick=()=>{historyBox.hidden=!historyBox.hidden;if(!historyBox.hidden){const rows=clientOrders(client);historyBox.innerHTML=rows.length?rows.map(o=>'<div class="history-order"><strong>'+prettyDate(o.date)+' · Pedido '+o.number+' · '+o.status+'</strong><br>'+o.items.map(x=>x.product+' — '+x.quantity+' — '+x.prep).join('<br>')+'</div>').join(''):'<span class="muted">Este cliente todavía no tiene pedidos guardados.</span>';history.textContent=historyBox.hidden?'Ver historial':'Ocultar historial';}};
+          actions.append(use,history);row.append(info,actions,historyBox);box.appendChild(row);
+        });
+        if(!matches.length)box.innerHTML='<p class="muted">No se ha encontrado ningún cliente.</p>';
+      }
+      root.querySelector('#client-search').oninput=renderClientSuggestions;
+      root.querySelector('#agenda-search').oninput=renderAgenda;
       function go(n){step=n;root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('#screen-'+n).hidden=false;root.querySelector('.steps').hidden=false;root.querySelectorAll('.step').forEach(x=>x.classList.toggle('active',Number(x.dataset.step)<=n));}
       function showPanel(id){root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('.steps').hidden=true;root.querySelector('#'+id).hidden=false;}
       products.forEach(([name,icon])=>{const b=document.createElement('button');b.type='button';b.className='btn viz-tile product';b.innerHTML='<span class="emoji">'+icon+'</span><span>'+name+'</span>';b.addEventListener('click',()=>{selectedProduct=name;grid.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');root.querySelector('#other-product-wrap').hidden=name!=='Otros';if(name!=='Otros')openPreparation();});grid.appendChild(b);});
@@ -198,8 +260,8 @@
       const updatedMessage=o=>'Hola, '+o.name+'.\n\nHemos actualizado su pedido nº '+o.number+':\n\n'+o.items.map(x=>'• '+x.product+' — '+x.quantity+'\n  Preparación: '+x.prep).join('\n')+'\n\n📅 Nuevo día de recogida: '+prettyDate(o.date)+'.\n\nMuchas gracias.\n\n'+shop;
       const openWhatsApp=(phone,message)=>{const n=cleanPhone(phone);if(!n){alert('No hay un teléfono válido para abrir WhatsApp.');return;}if(window.Android?.openWhatsApp)Android.openWhatsApp(n,message);else window.open('https://wa.me/'+n+'?text='+encodeURIComponent(message),'_blank');};
       root.querySelector('#to-summary').onclick=()=>{pickup=pickupInput.value||pickup;if(!pickup||!cart.length)return;if(orders.filter(o=>o.date===pickup&&o.status!=='Cancelado').length>=limit()){alert('Ese día ha alcanzado el límite máximo de '+limit()+' pedidos.');return;}const name=root.querySelector('#customer-name').value.trim()||'Cliente';const phone=root.querySelector('#customer-phone').value.trim()||'Sin teléfono';const deposit=root.querySelector('#deposit-status').value,amount=root.querySelector('#deposit-amount').value.trim();currentNumber=nextOrderNumber(pickup);const lines=cart.map(x=>x.product+' — '+x.quantity+' — '+x.prep).join('<br>');root.querySelector('#summary').innerHTML='<div class="summary-row"><span class="muted">Pedido</span><strong>'+currentNumber+'</strong></div><div class="summary-row"><span class="muted">Cliente</span><span>'+name+' · '+phone+'</span></div><div class="summary-row"><span class="muted">Productos</span><span>'+lines+'</span></div><div class="summary-row"><span class="muted">Señal</span><strong>'+deposit+(amount?' · '+amount:'')+'</strong></div><div class="summary-row"><span class="muted">Recogida</span><strong>'+prettyDate(pickup)+'</strong></div>';currentWhatsAppMessage=confirmationMessage(name,currentNumber,pickup,cart);root.querySelector('#whatsapp-preview').textContent=currentWhatsAppMessage;go(5);};
-      root.querySelector('#confirm').onclick=()=>{const phone=root.querySelector('#customer-phone').value.trim();const order={number:currentNumber,name:root.querySelector('#customer-name').value.trim()||'Cliente',phone,date:pickup,items:cart.map(x=>({...x})),status:'Pendiente',deposit:root.querySelector('#deposit-status').value,depositAmount:root.querySelector('#deposit-amount').value.trim()};orders.push(order);saveOrders();window.Android?.scheduleReminder?.(order.number,order.name,order.date);openWhatsApp(phone,currentWhatsAppMessage);root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('#done').hidden=false;root.querySelector('#done-text').textContent='El pedido '+currentNumber+' queda organizado para el '+prettyDate(pickup)+'. WhatsApp se ha abierto con el mensaje completo listo para enviar.';};
-      function resetOrder(){cart=[];pickup='';currentNumber='';selectedProduct='';selectedPrep='';pickupInput.value='';root.querySelector('#customer-name').value='';root.querySelector('#customer-phone').value='';root.querySelector('#deposit-status').value='Pendiente';root.querySelector('#deposit-amount').value='';renderCart();go(1);}
+      root.querySelector('#confirm').onclick=()=>{const phone=root.querySelector('#customer-phone').value.trim();const order={number:currentNumber,name:root.querySelector('#customer-name').value.trim()||'Cliente',phone,date:pickup,items:cart.map(x=>({...x})),status:'Pendiente',deposit:root.querySelector('#deposit-status').value,depositAmount:root.querySelector('#deposit-amount').value.trim()};orders.push(order);upsertClient(order.name,order.phone);saveOrders();window.Android?.scheduleReminder?.(order.number,order.name,order.date);openWhatsApp(phone,currentWhatsAppMessage);root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('#done').hidden=false;root.querySelector('#done-text').textContent='El pedido '+currentNumber+' queda organizado para el '+prettyDate(pickup)+'. WhatsApp se ha abierto con el mensaje completo listo para enviar.';};
+      function resetOrder(){cart=[];pickup='';currentNumber='';selectedProduct='';selectedPrep='';selectedClientId=null;pickupInput.value='';root.querySelector('#customer-name').value='';root.querySelector('#customer-phone').value='';root.querySelector('#client-search').value='';root.querySelector('#client-suggestions').innerHTML='';root.querySelector('#client-status').textContent='Si es nuevo, escribe sus datos. Se guardará automáticamente al confirmar.';root.querySelector('#deposit-status').value='Pendiente';root.querySelector('#deposit-amount').value='';renderCart();go(1);}
       root.querySelector('#new-order').onclick=resetOrder;root.querySelector('#nav-new').onclick=resetOrder;
       let ordersMode='day';
       function activeOrder(o){return !['Entregado','Cancelado'].includes(o.status);}
@@ -255,7 +317,7 @@
         editingOrder.name=root.querySelector('#edit-name').value.trim()||'Cliente';editingOrder.phone=root.querySelector('#edit-phone').value.trim();editingOrder.date=newDate;editingOrder.items=items;editingOrder.deposit=root.querySelector('#edit-deposit').value;editingOrder.depositAmount=root.querySelector('#edit-deposit-amount').value.trim();
         if(oldDate!==newDate)editingOrder.number=nextOrderNumber(newDate,editingOrder);
         if(editingOrder.status==='Preparado')editingOrder.status='Pendiente';
-        editingOrder.updatedAt=new Date().toISOString();saveOrders();window.Android?.cancelReminder?.(oldNumber);window.Android?.scheduleReminder?.(editingOrder.number,editingOrder.name,editingOrder.date);
+        editingOrder.updatedAt=new Date().toISOString();upsertClient(editingOrder.name,editingOrder.phone);saveOrders();window.Android?.cancelReminder?.(oldNumber);window.Android?.scheduleReminder?.(editingOrder.number,editingOrder.name,editingOrder.date);
         if(sendWhatsApp)openWhatsApp(editingOrder.phone,updatedMessage(editingOrder));
         closeEditor();renderTomorrowBadge();
       }
@@ -265,12 +327,30 @@
       root.querySelector('#edit-save-whatsapp').onclick=()=>saveEditedOrder(true);
       function printOrder(o){const previous=document.body.innerHTML;document.body.innerHTML='<main style="padding:30px;font-family:sans-serif"><h1>LA POLLERÍA 2.0</h1><h2>PEDIDO '+o.number+'</h2><p><strong>Cliente:</strong> '+o.name+' · '+o.phone+'</p><p><strong>Recogida:</strong> '+prettyDate(o.date)+'</p><p><strong>Estado:</strong> '+o.status+' · <strong>Señal:</strong> '+o.deposit+(o.depositAmount?' · '+o.depositAmount:'')+'</p><hr><h3>Productos y preparación</h3>'+o.items.map(x=>'<p><strong>'+x.product+'</strong> — '+x.quantity+'<br>Preparación: '+x.prep+'</p>').join('')+'<hr><p>'+shop.replaceAll('\n','<br>')+'</p></main>';if(window.Android?.printPage)Android.printPage();else window.print();setTimeout(()=>location.reload(),1200);}
       function sendReminder(o){openWhatsApp(o.phone,o.status==='Preparado'?preparedMessage(o):reminderMessage(o));}
-      root.querySelector('#nav-orders').onclick=()=>{ordersMode='day';root.querySelector('#orders-heading').textContent='Pedidos activos por día';root.querySelector('#orders-filter-label').hidden=false;root.querySelector('#orders-date').value='';showPanel('orders-screen');renderOrders();};root.querySelector('#nav-all-orders').onclick=()=>{ordersMode='all';root.querySelector('#orders-heading').textContent='Todos los pedidos activos';root.querySelector('#orders-filter-label').hidden=true;showPanel('orders-screen');renderOrders();};root.querySelector('#nav-history').onclick=()=>{ordersMode='history';root.querySelector('#orders-heading').textContent='Historial de entregados y cancelados';root.querySelector('#orders-filter-label').hidden=true;showPanel('orders-screen');renderOrders();};root.querySelector('#orders-date').onchange=renderOrders;root.querySelector('#print-day').onclick=()=>window.Android?.printPage?Android.printPage():window.print();
+      root.querySelector('#nav-orders').onclick=()=>{ordersMode='day';root.querySelector('#orders-heading').textContent='Pedidos activos por día';root.querySelector('#orders-filter-label').hidden=false;root.querySelector('#orders-date').value='';showPanel('orders-screen');renderOrders();};root.querySelector('#nav-all-orders').onclick=()=>{ordersMode='all';root.querySelector('#orders-heading').textContent='Todos los pedidos activos';root.querySelector('#orders-filter-label').hidden=true;showPanel('orders-screen');renderOrders();};root.querySelector('#nav-clients').onclick=()=>{showPanel('clients-screen');renderAgenda();};root.querySelector('#nav-history').onclick=()=>{ordersMode='history';root.querySelector('#orders-heading').textContent='Historial de entregados y cancelados';root.querySelector('#orders-filter-label').hidden=true;showPanel('orders-screen');renderOrders();};root.querySelector('#orders-date').onchange=renderOrders;
+      function selectedReportDate(){return root.querySelector('#orders-date').value;}
+      function dayOrders(date){return orders.filter(o=>o.date===date&&o.status!=='Cancelado').sort((a,b)=>a.number.localeCompare(b.number));}
+      function printDayReport(){
+        const date=selectedReportDate();if(!date){alert('Selecciona primero el día que quieres imprimir.');return;}
+        const rows=dayOrders(date);if(!rows.length){alert('No hay pedidos para ese día.');return;}
+        document.body.innerHTML='<main style="padding:24px;font-family:Arial,sans-serif;color:#111;background:#fff"><h1>LA POLLERÍA 2.0</h1><h2>Pedidos del '+prettyDate(date)+'</h2><p><strong>Total: '+rows.length+' pedidos</strong></p>'+rows.map(o=>'<section style="padding:12px 0;border-top:2px solid #222;page-break-inside:avoid"><h3>Pedido '+o.number+' · '+o.name+'</h3><p><strong>Teléfono:</strong> '+o.phone+' &nbsp; <strong>Estado:</strong> '+o.status+' &nbsp; <strong>Señal:</strong> '+o.deposit+(o.depositAmount?' · '+o.depositAmount:'')+'</p>'+o.items.map(x=>'<p>• <strong>'+x.product+'</strong> — '+x.quantity+' — '+x.prep+'</p>').join('')+'</section>').join('')+'<hr><p>'+shop.replaceAll('\n','<br>')+'</p></main>';
+        if(window.Android?.printPage)Android.printPage();else window.print();setTimeout(()=>location.reload(),1500);
+      }
+      function csvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"';}
+      function exportDayExcel(){
+        const date=selectedReportDate();if(!date){alert('Selecciona primero el día que quieres exportar.');return;}
+        const rows=dayOrders(date);if(!rows.length){alert('No hay pedidos para ese día.');return;}
+        const data=[['Fecha','Nº pedido','Cliente','Teléfono','Producto','Cantidad','Preparación','Estado','Señal','Importe señal']];
+        rows.forEach(o=>o.items.forEach(x=>data.push([prettyDate(o.date),o.number,o.name,o.phone,x.product,x.quantity,x.prep,o.status,o.deposit,o.depositAmount||''])));
+        const csv='\uFEFF'+data.map(row=>row.map(csvCell).join(';')).join('\r\n');
+        if(window.Android?.shareCsv)Android.shareCsv('pedidos-'+date+'.csv',csv);else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='pedidos-'+date+'.csv';a.click();}
+      }
+      root.querySelector('#print-day').onclick=printDayReport;root.querySelector('#excel-day').onclick=exportDayExcel;
       function renderTomorrowBadge(){const tomorrow=future(1),total=orders.filter(o=>o.date===tomorrow&&o.status!=='Cancelado'&&o.status!=='Entregado').length;root.querySelector('#nav-tomorrow').textContent='🔔 Mañana ('+total+')';}
       root.querySelector('#nav-tomorrow').onclick=()=>{ordersMode='day';root.querySelector('#orders-heading').textContent='Pedidos para mañana';root.querySelector('#orders-filter-label').hidden=false;root.querySelector('#orders-date').value=future(1);showPanel('orders-screen');renderOrders();};
-      root.querySelector('#nav-backup').onclick=()=>{const data=JSON.stringify({createdAt:new Date().toISOString(),orders},null,2);if(window.Android?.shareBackup)Android.shareBackup(data);else{const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='copia-pedidos-navidad.json';a.click();URL.revokeObjectURL(url);}};
+      root.querySelector('#nav-backup').onclick=()=>{const data=JSON.stringify({createdAt:new Date().toISOString(),version:2,orders,clients},null,2);if(window.Android?.shareBackup)Android.shareBackup(data);else{const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='copia-pedidos-navidad.json';a.click();URL.revokeObjectURL(url);}};
       root.querySelector('#nav-restore').onclick=()=>root.querySelector('#restore-file').click();
-      root.querySelector('#restore-file').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!Array.isArray(data.orders))throw new Error();if(confirm('Se sustituirán los pedidos actuales por los de la copia. ¿Continuar?')){orders=data.orders;saveOrders();orders.filter(o=>!['Entregado','Cancelado'].includes(o.status)).forEach(o=>window.Android?.scheduleReminder?.(o.number,o.name,o.date));renderTomorrowBadge();alert('Copia restaurada correctamente.');}}catch(_){alert('El archivo no es una copia válida.');}};reader.readAsText(file);e.target.value='';};
+      root.querySelector('#restore-file').onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!Array.isArray(data.orders))throw new Error();if(confirm('Se sustituirán los pedidos actuales por los de la copia. ¿Continuar?')){orders=data.orders;clients=Array.isArray(data.clients)?data.clients:[];orders.forEach(o=>upsertClient(o.name,o.phone));saveOrders();saveClients();orders.filter(o=>!['Entregado','Cancelado'].includes(o.status)).forEach(o=>window.Android?.scheduleReminder?.(o.number,o.name,o.date));renderTomorrowBadge();alert('Copia restaurada correctamente.');}}catch(_){alert('El archivo no es una copia válida.');}};reader.readAsText(file);e.target.value='';};
       function renderCount(){const from=root.querySelector('#count-from').value,to=root.querySelector('#count-to').value,counts={};orders.filter(o=>(!from||o.date>=from)&&(!to||o.date<=to)&&o.status!=='Cancelado').forEach(o=>o.items.forEach(x=>{const units=parseInt(x.quantity)||1;const key=x.product+'|'+x.prep;counts[key]=(counts[key]||0)+units;}));const box=root.querySelector('#count-list');box.innerHTML='<div class="count-row"><strong>Producto</strong><strong>Cantidad</strong><strong>Preparación</strong></div>';Object.entries(counts).sort().forEach(([key,total])=>{const [product,prep]=key.split('|');const r=document.createElement('div');r.className='count-row';r.innerHTML='<span>'+product+'</span><strong>'+total+'</strong><span>'+prep+'</span>';box.appendChild(r);});}
       root.querySelector('#nav-count').onclick=()=>{showPanel('count-screen');renderCount();};root.querySelector('#count-from').onchange=renderCount;root.querySelector('#count-to').onchange=renderCount;root.querySelector('#print-count').onclick=()=>window.Android?.printPage?Android.printPage():window.print();
       root.querySelector('#daily-limit').onchange=()=>{localStorage.setItem('polleria_daily_limit',root.querySelector('#daily-limit').value);renderCount();};
