@@ -17,7 +17,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "es.lapolleria.pedidosnavidad"
+        applicationId = "es.lapolleria.pedidosnavidad.difusion"
         minSdk = 26
         targetSdk = 35
         versionCode = 4
