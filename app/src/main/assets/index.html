@@ -141,8 +141,20 @@
     <div class="actions"><button type="button" class="btn" id="print-day">🖨 Imprimir / guardar PDF del día</button><button type="button" class="btn" id="excel-day">📊 Exportar día para Excel</button></div>
   </section>
 
+  <section class="panel" id="difusion-screen" hidden>
+    <h3>📣 Difusión</h3>
+    <button class="btn" id="difusion-back" type="button">← Clientes</button>
+    <label class="form-label">Tipo de mensaje<select class="form-control" id="difusion-type">
+      <option value="navidad">Felicitación de Navidad</option><option value="anoNuevo">Felicitación de Año Nuevo</option><option value="ofertas">Ofertas y descuentos</option>
+    </select></label>
+    <label class="form-label">Pedidos desde<input class="form-control" id="difusion-from" type="date"></label>
+    <label class="form-label">Mensaje<textarea class="form-control" rows="4" id="difusion-message"></textarea></label>
+    <p class="muted">Abre cada mensaje en WhatsApp. Después de enviarlo, vuelve aquí y márcalo como enviado.</p>
+    <p id="difusion-count" role="status"></p>
+    <div id="difusion-list"></div>
+  </section>
   <section class="panel" id="clients-screen" hidden>
-    <h3>📒 Agenda e historial de clientes</h3>
+    <h3>📒 Agenda e historial de clientes</h3><button id="nav-difusion" type="button" class="btn btn-primary">📣 Difusión</button>
     <label class="form-label">Buscar por nombre o teléfono<input class="form-control" id="agenda-search" placeholder="Nombre o teléfono"></label>
     <p class="muted" id="agenda-count"></p>
     <div id="agenda-list"></div>
@@ -221,6 +233,11 @@
         matches.forEach(client=>{
           const row=document.createElement('div');row.className='client-card';
           const info=document.createElement('div');info.innerHTML='<strong>'+client.name+'</strong><br><span class="muted">'+client.phone+'</span>';
+          const permission=document.createElement('label'),optIn=document.createElement('input');
+          optIn.type='checkbox';optIn.checked=client.campaignOptIn===true;
+          optIn.onchange=()=>{client.campaignOptIn=optIn.checked;saveClients();};
+          permission.append(optIn,document.createTextNode(' Acepta felicitaciones y ofertas'));info.append(document.createElement('br'),permission);
+
           const actions=document.createElement('div');actions.className='viz-row';
           const use=document.createElement('button');use.type='button';use.className='btn btn-primary';use.textContent='＋ Nuevo pedido';use.onclick=()=>{resetOrder();chooseClient(client);};
           const history=document.createElement('button');history.type='button';history.className='btn';history.textContent='Ver historial';
@@ -230,6 +247,58 @@
         });
         if(!matches.length)box.innerHTML='<p class="muted">No se ha encontrado ningún cliente.</p>';
       }
+      const campaignTemplates={
+        navidad:"🎄 ¡Feliz Navidad de parte de todo el equipo de La Pollería 2.0!\n\nEn estas fechas, cuando toca poner un plato más y arrimar otra silla a la mesa, nos hace especial ilusión saber que usted ha contado con nosotros. Gracias por confiar en su pollería del mercado y por dejarnos aportar un poquito a esos momentos que luego se recuerdan durante todo el año.\n\nDeseamos que pase una Navidad tranquila, con las personas que quiere y tiempo de sobra para disfrutar de la sobremesa. Y si alguien pregunta quién ha montado el pollo esta Navidad… ¡por una vez nos declaramos culpables con mucho gusto! 🐔\n\nReciba un abrazo de todo el equipo. 🧡",
+        anoNuevo:"✨ ¡Feliz Año Nuevo de parte de todo el equipo de La Pollería 2.0!\n\nAntes de que se nos atraganten las uvas, queríamos darle las gracias por algo que para nosotros cuenta mucho: que usted siga pasando por nuestro puesto. Detrás de cada encargo hay una comida, una celebración o simplemente ganas de cuidar a alguien. Que se acuerde de nosotros para esos momentos nos alegra de verdad.\n\nLe deseamos un año con salud, ratos tranquilos y muchas ocasiones para sentarse a la mesa con quienes quiere. Y si se propone cocinar un poco más, cuente con nosotros para el pollo. Lo de fregar la bandeja… eso ya se negocia en casa. 😄\n\nUn abrazo y nuestros mejores deseos para usted y los suyos. 🧡",
+        ofertas:'Hola, te contamos las últimas ofertas de La Pollería 2.0:'
+      };
+      const field=id=>root.querySelector('#'+id);
+      let campaignOpened=null;
+      const campaignPhone=value=>{
+        let n=String(value||'').replace(/[^0-9]/g,'').replace(/^00/,'');
+        if(n.length===9)n='34'+n;
+        return /^[1-9][0-9]{7,14}$/.test(n)?n:'';
+      };
+      function renderCampaign(){
+        const type=field('difusion-type').value, from=field('difusion-from').value,list=field('difusion-list');
+        list.replaceChildren();
+        const recent=new Map();
+        for(const o of orders){
+          const phone=campaignPhone(o.phone),date=String(o.createdAt||o.date||'').slice(0,10);
+          if(!phone||!date||!from||date<from||o.status==='Cancelado')continue;
+          const round=String(o.createdAt||o.date||'')+'|'+String(o.number||'');
+          if(!recent.has(phone)||recent.get(phone)<round)recent.set(phone,round);
+        }
+        const seen=new Set();
+        let count=0;
+        for(const client of clients){
+          const phone=campaignPhone(client.phone),round=recent.get(phone);
+          if(!round||seen.has(phone)||client.campaignOptIn!==true||(type!=='ofertas'&&client.campaignSent?.[type]===round))continue;
+          seen.add(phone);count++;
+          const row=document.createElement('div');row.className='client-card';
+          const label=document.createElement('strong');label.textContent=client.name+' · '+client.phone;
+          const actions=document.createElement('div');
+          const open=document.createElement('button');open.type='button';open.className='btn';open.textContent='Abrir WhatsApp';
+          const done=document.createElement('button');done.type='button';done.className='btn';done.textContent='Marcar como enviado';done.hidden=type==='ofertas'||!(campaignOpened?.phone===phone&&campaignOpened?.type===type&&campaignOpened?.round===round);
+          open.onclick=()=>{
+            const message=field('difusion-message').value.trim();
+            if(!message){field('difusion-count').textContent='Escribe el mensaje antes de abrir WhatsApp.';return;}
+            campaignOpened={phone,type,round};renderCampaign();
+            openWhatsApp(phone,message+'\n\n'+shop+(type==='ofertas'?'\nSi no quieres recibir más promociones, responde BAJA.':''));
+          };
+          done.onclick=()=>{client.campaignSent={...client.campaignSent,[type]:round};saveClients();campaignOpened=null;renderCampaign();};
+          actions.append(open,done);row.append(label,actions);list.append(row);
+        }
+        field('difusion-count').textContent=count+' clientes disponibles';
+      }
+      field('nav-difusion').onclick=()=>{
+        if(!field('difusion-from').value){const now=new Date();const year=now.getFullYear()-(now.getMonth()===0?1:0);field('difusion-from').value=year+'-11-01';}
+        if(!field('difusion-message').value)field('difusion-message').value=campaignTemplates[field('difusion-type').value];
+        showPanel('difusion-screen');renderCampaign();
+      };
+      field('difusion-back').onclick=()=>{showPanel('clients-screen');renderAgenda();};
+      field('difusion-type').onchange=()=>{field('difusion-message').value=campaignTemplates[field('difusion-type').value];renderCampaign();};
+      field('difusion-from').onchange=renderCampaign;
       root.querySelector('#client-search').oninput=renderClientSuggestions;
       root.querySelector('#agenda-search').oninput=renderAgenda;
       function go(n){step=n;root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('#screen-'+n).hidden=false;root.querySelector('.steps').hidden=false;root.querySelectorAll('.step').forEach(x=>x.classList.toggle('active',Number(x.dataset.step)<=n));}
@@ -260,7 +329,7 @@
       const updatedMessage=o=>'Hola, '+o.name+'.\n\nHemos actualizado su pedido nº '+o.number+':\n\n'+o.items.map(x=>'• '+x.product+' — '+x.quantity+'\n  Preparación: '+x.prep).join('\n')+'\n\n📅 Nuevo día de recogida: '+prettyDate(o.date)+'.\n\nMuchas gracias.\n\n'+shop;
       const openWhatsApp=(phone,message)=>{const n=cleanPhone(phone);if(!n){alert('No hay un teléfono válido para abrir WhatsApp.');return;}if(window.Android?.openWhatsApp)Android.openWhatsApp(n,message);else window.open('https://wa.me/'+n+'?text='+encodeURIComponent(message),'_blank');};
       root.querySelector('#to-summary').onclick=()=>{pickup=pickupInput.value||pickup;if(!pickup||!cart.length)return;if(orders.filter(o=>o.date===pickup&&o.status!=='Cancelado').length>=limit()){alert('Ese día ha alcanzado el límite máximo de '+limit()+' pedidos.');return;}const name=root.querySelector('#customer-name').value.trim()||'Cliente';const phone=root.querySelector('#customer-phone').value.trim()||'Sin teléfono';const deposit=root.querySelector('#deposit-status').value,amount=root.querySelector('#deposit-amount').value.trim();currentNumber=nextOrderNumber(pickup);const lines=cart.map(x=>x.product+' — '+x.quantity+' — '+x.prep).join('<br>');root.querySelector('#summary').innerHTML='<div class="summary-row"><span class="muted">Pedido</span><strong>'+currentNumber+'</strong></div><div class="summary-row"><span class="muted">Cliente</span><span>'+name+' · '+phone+'</span></div><div class="summary-row"><span class="muted">Productos</span><span>'+lines+'</span></div><div class="summary-row"><span class="muted">Señal</span><strong>'+deposit+(amount?' · '+amount:'')+'</strong></div><div class="summary-row"><span class="muted">Recogida</span><strong>'+prettyDate(pickup)+'</strong></div>';currentWhatsAppMessage=confirmationMessage(name,currentNumber,pickup,cart);root.querySelector('#whatsapp-preview').textContent=currentWhatsAppMessage;go(5);};
-      root.querySelector('#confirm').onclick=()=>{const phone=root.querySelector('#customer-phone').value.trim();const order={number:currentNumber,name:root.querySelector('#customer-name').value.trim()||'Cliente',phone,date:pickup,items:cart.map(x=>({...x})),status:'Pendiente',deposit:root.querySelector('#deposit-status').value,depositAmount:root.querySelector('#deposit-amount').value.trim()};orders.push(order);upsertClient(order.name,order.phone);saveOrders();window.Android?.scheduleReminder?.(order.number,order.name,order.date);openWhatsApp(phone,currentWhatsAppMessage);root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('#done').hidden=false;root.querySelector('#done-text').textContent='El pedido '+currentNumber+' queda organizado para el '+prettyDate(pickup)+'. WhatsApp se ha abierto con el mensaje completo listo para enviar.';};
+      root.querySelector('#confirm').onclick=()=>{const phone=root.querySelector('#customer-phone').value.trim();const order={number:currentNumber,name:root.querySelector('#customer-name').value.trim()||'Cliente',phone,date:pickup,createdAt:new Date().toISOString(),items:cart.map(x=>({...x})),status:'Pendiente',deposit:root.querySelector('#deposit-status').value,depositAmount:root.querySelector('#deposit-amount').value.trim()};orders.push(order);upsertClient(order.name,order.phone);saveOrders();window.Android?.scheduleReminder?.(order.number,order.name,order.date);openWhatsApp(phone,currentWhatsAppMessage);root.querySelectorAll('section.panel').forEach(x=>x.hidden=true);root.querySelector('#done').hidden=false;root.querySelector('#done-text').textContent='El pedido '+currentNumber+' queda organizado para el '+prettyDate(pickup)+'. WhatsApp se ha abierto con el mensaje completo listo para enviar.';};
       function resetOrder(){cart=[];pickup='';currentNumber='';selectedProduct='';selectedPrep='';selectedClientId=null;pickupInput.value='';root.querySelector('#customer-name').value='';root.querySelector('#customer-phone').value='';root.querySelector('#client-search').value='';root.querySelector('#client-suggestions').innerHTML='';root.querySelector('#client-status').textContent='Si es nuevo, escribe sus datos. Se guardará automáticamente al confirmar.';root.querySelector('#deposit-status').value='Pendiente';root.querySelector('#deposit-amount').value='';renderCart();go(1);}
       root.querySelector('#new-order').onclick=resetOrder;root.querySelector('#nav-new').onclick=resetOrder;
       let ordersMode='day';
